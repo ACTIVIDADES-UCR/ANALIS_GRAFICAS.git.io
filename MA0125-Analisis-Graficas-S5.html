@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MA-0125 · Análisis de Gráficas</title>
+
+  <!-- Fuentes UCR-friendly -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet"/>
+
+  <!-- Chart.js + notación matemática -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous"/>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+
+  <style>
+    /* ── Tokens de color UCR ─────────────────────────── */
+    :root {
+      --azul:   #003874;
+      --oro:    #c89b28;
+      --verde:  #00783c;
+      --rojo:   #b41e1e;
+      --fondo:  #eaf2fc;
+      --blanco: #ffffff;
+      --gris:   #4a4a4a;
+      --gris-cl:#f4f6fa;
+    }
+
+    /* ── Reset & base ───────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--fondo);
+      color: var(--gris);
+      min-height: 100vh;
+    }
+
+    /* ── Encabezado ─────────────────────────────────── */
+    header {
+      background: var(--azul);
+      color: white;
+      padding: 0.9rem 2rem;
+      border-bottom: 4px solid var(--oro);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header .badge {
+      background: var(--oro);
+      color: var(--azul);
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+    }
+    header h1 { font-size: 1.15rem; font-weight: 700; }
+    header p  { font-size: 0.8rem; opacity: .8; }
+
+    /* ── Progreso global ────────────────────────────── */
+    #progress-bar-wrap {
+      width: 100%; height: 6px;
+      background: #cdd8e8;
+    }
+    #progress-bar {
+      height: 6px;
+      background: var(--oro);
+      width: 0%;
+      transition: width .4s ease;
+    }
+
+    /* ── Navegación de secciones ────────────────────── */
+    nav.sections {
+      display: flex;
+      gap: 0.4rem;
+      padding: 0.7rem 2rem;
+      background: white;
+      border-bottom: 1px solid #dde5f0;
+      overflow-x: auto;
+    }
+    nav.sections button {
+      border: none;
+      padding: 0.45rem 1rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      background: var(--fondo);
+      color: var(--azul);
+      white-space: nowrap;
+      transition: all .25s;
+    }
+    nav.sections button.active,
+    nav.sections button:hover {
+      background: var(--azul);
+      color: white;
+    }
+
+    /* ── Contenedor principal ───────────────────────── */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.5rem 1.2rem 3rem;
+    }
+
+    /* ── Panel de sección ───────────────────────────── */
+    .section-panel { display: none; }
+    .section-panel.active { display: block; }
+
+    /* ── Tarjeta genérica ───────────────────────────── */
+    .card {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,56,116,.10);
+      padding: 1.4rem 1.6rem;
+      margin-bottom: 1.4rem;
+    }
+    .card h2 {
+      font-size: 1.08rem;
+      color: var(--azul);
+      margin-bottom: .8rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .card h2 .num {
+      background: var(--azul);
+      color: white;
+      font-size: .75rem;
+      padding: .18rem .55rem;
+      border-radius: 999px;
+    }
+
+    /* ── Cajas de definición ────────────────────────── */
+    .def-box {
+      border-left: 4px solid var(--azul);
+      background: var(--fondo);
+      padding: .8rem 1rem;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: .8rem;
+      font-size: .9rem;
+    }
+    .def-box.verde  { border-color: var(--verde); background: #e8f6ee; }
+    .def-box.oro    { border-color: var(--oro);   background: #fef8e8; }
+    .def-box.rojo   { border-color: var(--rojo);  background: #fdf0f0; }
+
+    /* ── Grid 2 columnas ────────────────────────────── */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media(max-width:680px){ .grid-2 { grid-template-columns: 1fr; } }
+
+    /* ── Gráficas canvas ────────────────────────────── */
+    .chart-wrap {
+      position: relative;
+      height: 280px;
+      background: var(--gris-cl);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    /* ── Interactivo: arrastra la línea ─────────────── */
+    #slider-wrap, .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: .8rem 0;
+    }
+    #xSlider {
+      flex: 1;
+      accent-color: var(--azul);
+    }
+    #slider-result {
+      min-width: 180px;
+      background: var(--fondo);
+      padding: .5rem .8rem;
+      border-radius: 8px;
+      font-size: .9rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--azul);
+      font-weight: 600;
+    }
+
+    /* ── Quiz ───────────────────────────────────────── */
+    .quiz-q {
+      background: var(--gris-cl);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .quiz-q p { font-weight: 600; margin-bottom: .6rem; font-size: .93rem; }
+    .quiz-q label {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .4rem .5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: .88rem;
+      transition: background .2s;
+    }
+    .quiz-q label:hover { background: #dce8f7; }
+    .quiz-q label.correct   { background: #d4f0df; color: var(--verde); font-weight: 700; }
+    .quiz-q label.incorrect { background: #fde8e8; color: var(--rojo);  font-weight: 700; }
+
+    /* ── Botón principal ────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: var(--azul);
+      color: white;
+      border: none;
+      padding: .6rem 1.4rem;
+      border-radius: 8px;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s;
+      margin-top: .8rem;
+    }
+    .btn:hover { opacity: .87; }
+    .btn.oro  { background: var(--oro); color: var(--azul); }
+    .btn.verde{ background: var(--verde); }
+
+    /* ── Puntuación ─────────────────────────────────── */
+    #quiz-score {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--azul);
+      margin-top: .8rem;
+      min-height: 1.4rem;
+    }
+
+    /* ── Actividad: clasifica puntos ────────────────── */
+    .drag-zone {
+      min-height: 80px;
+      border: 2px dashed #aac4e4;
+      border-radius: 8px;
+      padding: .6rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      align-content: flex-start;
+      background: var(--gris-cl);
+      transition: background .2s;
+    }
+    .drag-zone.over { background: #dce8f7; border-color: var(--azul); }
+    .drag-chip {
+      background: var(--azul);
+      color: white;
+      border-radius: 999px;
+      padding: .3rem .85rem;
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: grab;
+      user-select: none;
+      transition: transform .15s;
+    }
+    .drag-chip:active { transform: scale(1.08); cursor: grabbing; }
+
+    /* ── Tabla resumen ──────────────────────────────── */
+    table.resumen {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+    table.resumen th {
+      background: var(--azul);
+      color: white;
+      padding: .55rem .8rem;
+      text-align: left;
+    }
+    table.resumen td {
+      padding: .5rem .8rem;
+      border-bottom: 1px solid #dde5f0;
+    }
+    table.resumen tr:nth-child(even) td { background: var(--fondo); }
+    .tag {
+      display: inline-block;
+      padding: .15rem .55rem;
+      border-radius: 999px;
+      font-size: .75rem;
+      font-weight: 700;
+    }
+    .tag.abierto { background: #fde8e8; color: var(--rojo); }
+    .tag.ordenado{ background: #e8f0fd; color: var(--azul); }
+
+    /* ── Acordeón / profundidad ─────────────────────── */
+    details.deep {
+      background: #fff;
+      border: 1px solid #dde5f0;
+      border-radius: 8px;
+      padding: .55rem .85rem;
+      margin: .45rem 0;
+      font-size: .86rem;
+    }
+    details.deep > summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--azul);
+      list-style-position: outside;
+    }
+    details.deep[open] > summary { margin-bottom: .45rem; }
+    details.deep .trap { border-left: 3px solid var(--rojo); padding-left: .55rem; margin-top: .45rem; color: #555; }
+    details.deep .ok  { border-left: 3px solid var(--verde); padding-left: .55rem; margin-top: .45rem; color: #333; }
+
+    .step-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: .5rem;
+      margin-top: .6rem;
+    }
+    .katex-inline { font-size: 1em; }
+
+    /* ── Texto matemático “voz de curso” ───────────── */
+    .prose-math {
+      font-family: "Literata", Georgia, "Times New Roman", serif;
+      font-size: 0.94rem;
+      line-height: 1.68;
+      color: #2a2a2a;
+    }
+    .prose-math p { margin: 0 0 0.65rem; }
+    .prose-math p:last-child { margin-bottom: 0; }
+    .prose-math strong { font-weight: 600; color: #1a1a1a; }
+    .h-sec {
+      font-family: Inter, system-ui, sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--azul);
+      margin: 1rem 0 0.5rem;
+      letter-spacing: 0.02em;
+    }
+    .frame {
+      border: 1px solid #c9d6ea;
+      background: #fafcfe;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin: 0.6rem 0;
+      font-size: 0.86rem;
+      color: #444;
+    }
+    .frame strong { color: var(--azul); }
+
+    /* ── Footer ─────────────────────────────────────── */
+    footer {
+      text-align: center;
+      font-size: .8rem;
+      color: #888;
+      padding: 1.5rem;
+      border-top: 1px solid #dde5f0;
+      background: white;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ENCABEZADO -->
+<header>
+  <div>
+    <div class="badge">MA-0125</div>
+  </div>
+  <div>
+    <h1>Funciones reales y lectura gráfica</h1>
+    <p style="max-width:42rem;line-height:1.45">Semana 5 · MA-0125 · I Ciclo 2026 · Universidad de Costa Rica · <em>Lectura cualitativa del gráfico como objeto matemático</em></p>
+  </div>
+</header>
+<div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+
+<!-- NAVEGACIÓN -->
+<nav class="sections" aria-label="Secciones del recurso">
+  <button class="active" onclick="showSection('s1',this)">Dominio y ámbito</button>
+  <button onclick="showSection('s2',this)">Imagen y preimagen</button>
+  <button onclick="showSection('s3',this)">Ejes y asíntotas</button>
+  <button onclick="showSection('s4',this)">Monotonía y signo</button>
+  <button onclick="showSection('s5',this)">Concavidad</button>
+  <button onclick="showSection('s6',this)">Autoevaluación</button>
+  <button onclick="showSection('s7',this)">Síntesis</button>
+</nav>
+
+<main>
+
+<!-- ═══════════════════════════════════════════════════
+     SECCIÓN 1 — DOMINIO Y ÁMBITO
+════════════════════════════════════════════════════ -->
+<div id="s1" class="section-panel active">
+  <div class="card">
+    <h2><span class="num">1</span> Dominio y ámbito: proyecciones del gráfico</h2>
+    <p class="prose-math" style="margin-bottom:1rem;">Una función real <span class="katex-inline" data-tex="f:D\to\mathbb{R}"></span> determina su <strong>gráfico</strong> <span class="katex-inline" data-tex="\Gamma_{f}=\{(x,f(x)):x\in D\}"></span>, subconjunto del plano. El <strong>dominio</strong> no es “el eje <span class="katex-inline" data-tex="x"></span>” sino el conjunto de abscisas que aparecen en ese conjunto de puntos; gráficamente es la <strong>proyección ortogonal</strong> de <span class="katex-inline" data-tex="\Gamma_{f}"></span> sobre el eje horizontal. El <strong>ámbito</strong> (imagen global) <span class="katex-inline" data-tex="f(D)=\{f(x):x\in D\}"></span> es la proyección sobre el eje vertical. Por eso dominio y ámbito son lecturas <em>distintas</em>: una es conjunto de entradas admisibles, la otra de salidas alcanzables.</p>
+    <div class="grid-2">
+      <div>
+        <div class="def-box">
+          <strong>Dominio <span class="katex-inline" data-tex="D_{f}"></span></strong><br/>
+          <span class="prose-math" style="font-size:0.88rem;display:block;margin-top:.35rem;">Formalmente <span class="katex-inline" data-tex="D_{f}=\{x\in\mathbb{R}:\exists y\ (x,y)\in\Gamma_{f}\}"></span>. En la figura: recorra el eje <span class="katex-inline" data-tex="x"></span> de izquierda a derecha; marque extremos según <strong>●/○</strong> y excluya abscisas donde una <strong>asíntota vertical</strong> impide que el punto pertenezca al trazo.</span>
+        </div>
+        <div class="def-box verde">
+          <strong>Ámbito <span class="katex-inline" data-tex="A_{f}"></span></strong><br/>
+          <span class="prose-math" style="font-size:0.88rem;display:block;margin-top:.35rem;"><span class="katex-inline" data-tex="A_{f}=f(D_{f})"></span>. Recorra el eje <span class="katex-inline" data-tex="y"></span> ascendente y observe qué alturas ocupa la curva; una <strong>asíntota horizontal</strong> indica un valor límite que, si no se alcanza, aparece como extremo <strong>abierto</strong> del intervalo de ámbito.</span>
+        </div>
+        <div class="frame">
+          <strong>Observación.</strong> El dominio que se lee del dibujo puede ser un <em>subintervalo</em> del dominio natural de una fórmula: aquí se trabaja <strong>siempre</strong> el dominio <em>implícito en la gráfica dada</em>, no el de toda la expresión algebraica fuera de contexto.
+        </div>
+        <div class="def-box oro">
+          <strong>Convención de lectura</strong><br/>
+          <span class="prose-math" style="font-size:0.88rem;display:block;margin-top:.35rem;">Dominio ↔ eje <span class="katex-inline" data-tex="x"></span> (orden de lectura temporal: de <span class="katex-inline" data-tex="-\infty"></span> a <span class="katex-inline" data-tex="+\infty"></span> en el dibujo). Ámbito ↔ eje <span class="katex-inline" data-tex="y"></span>. Esta separación evita confundir “subir en la curva” con “subir en <span class="katex-inline" data-tex="y"></span>” cuando se discute monotonía más adelante.</span>
+        </div>
+      </div>
+      <div>
+        <div class="chart-wrap"><canvas id="chartDA"></canvas></div>
+        <p id="da-result" style="margin-top:.6rem;font-size:.82rem;color:var(--azul);font-weight:600;font-family:JetBrains Mono,monospace;"></p>
+      </div>
+    </div>
+
+    <!-- Control interactivo -->
+    <hr style="margin:1rem 0;border-color:#dde5f0;"/>
+    <p class="h-sec">Evaluación gráfica y recta vertical</p>
+    <p class="prose-math" style="font-size:0.86rem;margin-bottom:.65rem;color:#444;">La prueba de la vertical (en el gráfico: una recta <span class="katex-inline" data-tex="x=a"></span> corta <span class="katex-inline" data-tex="\Gamma_f"></span> a lo sumo una vez) es el criterio geométrico de función. Al desplazar <span class="katex-inline" data-tex="a"></span>, el punto <span class="katex-inline" data-tex="(a,f(a))"></span> recorre la curva; la segunda coordenada es la <strong>imagen</strong> <span class="katex-inline" data-tex="f(a)"></span>.</p>
+    <div id="slider-wrap">
+      <span style="font-size:.85rem;color:var(--gris);">x =</span>
+      <input type="range" id="xSlider" min="-4" max="4" step="0.1" value="0"/>
+      <div id="slider-result">f(0) = –1.50</div>
+    </div>
+    <p style="font-size:.82rem;color:#777;">Función: <span class="katex-inline" data-tex="f(x)=0.25x^2-1.5"></span> &nbsp;|&nbsp; Dominio gráfico: <span class="katex-inline" data-tex="D_{f}=[-4.5,\\,4.5]"></span></p>
+
+    <div style="margin-top:1.1rem;padding-top:1rem;border-top:1px solid #dde5f0;">
+      <p class="h-sec">Desglose completo (misma parábola)</p>
+      <p class="prose-math" style="font-size:0.86rem;color:#444;margin-bottom:.65rem;">Cada apartado enlaza <strong>definición</strong> → <strong>lectura en el dibujo</strong> → <strong>notación</strong>. Intente deducir el resultado antes de desplegar; compare con su redacción en intervalos y pares ordenados.</p>
+      <div class="step-grid">
+        <details class="deep"><summary>1. Dominio</summary><div class="ok prose-math"><strong>Resultado:</strong> <span class="katex-inline" data-tex="D_{f}=[-4.5,\\,4.5]"></span>. <strong>Justificación:</strong> el trazo muestra extremos cerrados en <span class="katex-inline" data-tex="x=\pm4.5"></span>; no hay discontinuidades ni asíntotas verticales internas, luego todo el segmento de abscisas entre ambos pertenece al conjunto de primeras coordenadas de <span class="katex-inline" data-tex="\Gamma_{f}"></span>.</div></details>
+        <details class="deep"><summary>2. Ámbito</summary><div class="ok prose-math"><strong>Resultado:</strong> <span class="katex-inline" data-tex="A_{f}=[m,M]"></span> con <span class="katex-inline" data-tex="m=f(0)=-1.5"></span> y <span class="katex-inline" data-tex="M=f(\pm4.5)\approx3.56"></span>. <strong>Justificación:</strong> en un intervalo cerrado, una parábola con vértice interior alcanza extremos globales en el vértice o en frontera; aquí el mínimo es el vértice y el máximo ocurre en ambos bordes por simetría.</div></details>
+        <details class="deep"><summary>3. Imagen y preimagen puntuales</summary><div class="ok prose-math"><strong>Definiciones:</strong> <span class="katex-inline" data-tex="f(a)"></span> es la imagen de <span class="katex-inline" data-tex="a"></span>. La preimagen de un valor <span class="katex-inline" data-tex="b"></span> es el conjunto <span class="katex-inline" data-tex="f^{-1}(\{b\})=\{x\in D_{f}\mid f(x)=b\}"></span> (no confundir con la inversa de una función, que puede no existir). Geométricamente: intersección de <span class="katex-inline" data-tex="\Gamma_{f}"></span> con rectas <span class="katex-inline" data-tex="x=a"></span> o <span class="katex-inline" data-tex="y=b"></span>.</div></details>
+        <details class="deep"><summary>4. Intersecciones con ejes</summary><div class="ok prose-math"><strong>Ceros:</strong> resolver <span class="katex-inline" data-tex="0.25x^2-1.5=0\Leftrightarrow x^2=6"></span>, luego <span class="katex-inline" data-tex="(\pm\sqrt{6},0)"></span>. <strong>Eje <span class="katex-inline" data-tex="y"></span>:</strong> evaluar <span class="katex-inline" data-tex="f(0)"></span>, punto <span class="katex-inline" data-tex="(0,-1.5)"></span>. En el curso se exige el par ordenado porque localiza un <em>punto del plano</em>, no solo una ecuación escalar.</div></details>
+        <details class="deep"><summary>5. Asíntotas</summary><div class="ok prose-math">No hay asíntotas en este ejemplo acotado. <strong>Recordatorio conceptual:</strong> una asíntota vertical en <span class="katex-inline" data-tex="x=a"></span> refleja comportamiento singular de <span class="katex-inline" data-tex="f"></span> al acercarse a <span class="katex-inline" data-tex="a"></span> (típicamente <span class="katex-inline" data-tex="|f(x)|\to\infty"></span>); por tanto <span class="katex-inline" data-tex="a\notin D_{f}"></span> y los intervalos adyacentes usan extremos abiertos en <span class="katex-inline" data-tex="a"></span>.</div></details>
+        <details class="deep"><summary>6. Signo</summary><div class="ok prose-math"><span class="katex-inline" data-tex="f(x)>0"></span> si y solo si la curva queda estrictamente por encima del eje <span class="katex-inline" data-tex="x"></span>; ocurre fuera de los ceros, es decir en <span class="katex-inline" data-tex="(-4.5,-\sqrt{6})\cup(\sqrt{6},4.5)"></span>. Donde <span class="katex-inline" data-tex="f(x)<0"></span>, entre ceros: <span class="katex-inline" data-tex="(-\sqrt{6},\sqrt{6})"></span>. Los ceros pertenecen al conjunto <span class="katex-inline" data-tex="\{f=0\}"></span>, no a los conjuntos <span class="katex-inline" data-tex="\{f>0\}"></span> ni <span class="katex-inline" data-tex="\{f<0\}"></span>; de ahí los intervalos abiertos en el contrato del curso.</div><div class="trap prose-math"><strong>Error frecuente:</strong> escribir <span class="katex-inline" data-tex="[-\sqrt{6},\sqrt{6}]"></span> como intervalo de negatividad estricta: es falso en los extremos porque <span class="katex-inline" data-tex="f=0"></span> ahí.</div></details>
+        <details class="deep"><summary>7. Monotonía estricta</summary><div class="ok prose-math"><strong>Definición (creciente):</strong> si <span class="katex-inline" data-tex="x_1<x_2"></span> entonces <span class="katex-inline" data-tex="f(x_1)<f(x_2)"></span> para todo par en el intervalo. Aquí <span class="katex-inline" data-tex="f"></span> es decreciente en <span class="katex-inline" data-tex="(-4.5,0)"></span> y creciente en <span class="katex-inline" data-tex="(0,4.5)"></span>. Se abre en <span class="katex-inline" data-tex="0"></span> porque la derivada (cuando exista) se anula y cambia el orden relativo de incrementos infinitesimales: conviene separar intervalos donde la comparación <span class="katex-inline" data-tex="f(x_1)<f(x_2)"></span> tiene signo uniforme.</div></details>
+        <details class="deep"><summary>8. Concavidad geométrica</summary><div class="ok prose-math">Una función es <strong>cóncava hacia arriba</strong> (convexa en el lenguaje del curso, símbolo <span class="katex-inline" data-tex="\cup"></span>) si el segmento entre dos puntos de la gráfica queda por encima del arco. Aquí <span class="katex-inline" data-tex="f''(x)=\frac{1}{2}>0"></span> en todo el dominio (donde existe la derivada segunda), luego la curvatura es uniforme; no hay tramos <span class="katex-inline" data-tex="\cap"></span>.</div></details>
+        <details class="deep"><summary>9. Inflexión</summary><div class="ok prose-math">Punto de inflexión: cambio de concavidad con continuidad local. Aquí <span class="katex-inline" data-tex="f''"></span> no cambia de signo en <span class="katex-inline" data-tex="D_{f}"></span>, luego <strong>no hay</strong> inflexión interior (el vértice es extremo, no punto de cambio de curvatura en sentido inflexión).</div></details>
+        <details class="deep"><summary>10. Extremos globales</summary><div class="ok prose-math"><strong>Mínimo absoluto</strong> en <span class="katex-inline" data-tex="(0,-1.5)"></span> porque <span class="katex-inline" data-tex="f(x)\ge-1.5"></span> para todo <span class="katex-inline" data-tex="x\in D_{f}"></span>. <strong>Máximos absolutos</strong> en <span class="katex-inline" data-tex="(\pm4.5,M)"></span> por simetría y convexidad: la función es estrictamente decreciente a la izquierda de <span class="katex-inline" data-tex="0"></span> y estrictamente creciente a la derecha, por lo que en un intervalo simétrico el máximo se alcanza en los bordes.</div></details>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SECCIÓN 2 — PREIMÁGENES E IMÁGENES
+════════════════════════════════════════════════════ -->
+<div id="s2" class="section-panel">
+  <div class="card">
+    <h2><span class="num">2</span> Imagen, preimagen y cardinalidad</h2>
+    <p class="prose-math" style="margin-bottom:1rem;">Dada <span class="katex-inline" data-tex="f:D\to\mathbb{R}"></span> y <span class="katex-inline" data-tex="b\in\mathbb{R}"></span>, la <strong>fibra</strong> o preimagen <span class="katex-inline" data-tex="f^{-1}(\{b\})"></span> es un subconjunto de <span class="katex-inline" data-tex="D"></span> (puede ser vacío, un punto o varios). La <strong>imagen puntual</strong> <span class="katex-inline" data-tex="f(a)"></span> es el único valor que, en el caso función, corresponde a <span class="katex-inline" data-tex="a"></span>. La lectura gráfica es puramente <em>geométrica</em>: intersección de <span class="katex-inline" data-tex="\Gamma_{f}"></span> con rectas afines <span class="katex-inline" data-tex="x=a"></span> o <span class="katex-inline" data-tex="y=b"></span>.</p>
+    <div class="grid-2">
+      <div>
+        <div class="def-box">
+          <strong>Regla de correspondencia</strong><br/>
+          <span class="prose-math" style="font-size:0.88rem;display:block;margin-top:.35rem;">Si <span class="katex-inline" data-tex="(x,y)\in\Gamma_{f}"></span>, entonces <span class="katex-inline" data-tex="y=f(x)"></span>. La primera coordenada es una preimagen de <span class="katex-inline" data-tex="y"></span>; la segunda es la imagen de <span class="katex-inline" data-tex="x"></span>.</span>
+        </div>
+        <div class="def-box oro">
+          <strong>Método gráfico</strong><br/>
+          <span class="prose-math" style="font-size:0.88rem;display:block;margin-top:.35rem;"><span class="katex-inline" data-tex="f(a)"></span>: intersección de <span class="katex-inline" data-tex="\Gamma_{f}"></span> con <span class="katex-inline" data-tex="x=a"></span>. Conjunto <span class="katex-inline" data-tex="f^{-1}(\{b\})"></span>: intersección con <span class="katex-inline" data-tex="y=b"></span>. La <strong>cardinalidad</strong> de esa intersección responde a “¿cuántas preimágenes tiene <span class="katex-inline" data-tex="b"></span>?”.</span>
+        </div>
+        <div class="frame">
+          <strong>Nota.</strong> En una parábola estrictamente convexa con eje vertical, la ecuación <span class="katex-inline" data-tex="f(x)=b"></span> tiene cero, una o dos soluciones según <span class="katex-inline" data-tex="b"></span> relacione con el vértice: el deslizador horizontal ilustra ese fenómeno sin álgebra simbólica adicional.
+        </div>
+
+        <!-- Pregunta tipo examen interactiva -->
+        <div style="background:var(--fondo);border-radius:8px;padding:.9rem 1rem;margin-top:.8rem;">
+          <p class="h-sec" style="margin-top:0;">Álgebra de la evaluación</p>
+          <p class="prose-math" style="font-size:0.9rem;margin:.5rem 0;">Si <span class="katex-inline" data-tex="f(-2)=-1"></span> (dato <em>gráfico</em> supuesto), calcule <span class="katex-inline" data-tex="3f(-2)+5"></span>. Observe que no se pide graficar: solo sustituir el valor funcional en una expresión afín exterior.</p>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem;">
+            <button class="btn" onclick="checkExam(this,'2')">2</button>
+            <button class="btn" onclick="checkExam(this,'3')">3</button>
+            <button class="btn" onclick="checkExam(this,'-1')">−1</button>
+            <button class="btn" onclick="checkExam(this,'8')">8</button>
+          </div>
+          <p id="exam-msg" style="margin-top:.6rem;font-weight:700;font-size:.9rem;"></p>
+        </div>
+      </div>
+      <div>
+        <div class="chart-wrap"><canvas id="chartPI"></canvas></div>
+        <div class="slider-row" style="margin-top:.65rem;">
+          <span style="font-size:.82rem;color:var(--gris);">Vertical <code>x</code> =</span>
+          <input type="range" id="xSliderPI" min="-3.5" max="3.5" step="0.05" value="-3" style="flex:1;min-width:120px;accent-color:var(--azul);"/>
+          <span id="pi-xv" style="font-family:JetBrains Mono,monospace;font-size:.82rem;font-weight:700;color:var(--azul);min-width:3.2rem;">−3</span>
+        </div>
+        <div class="slider-row" style="margin-top:.45rem;">
+          <span style="font-size:.82rem;color:var(--gris);">Horizontal <code>y</code> =</span>
+          <input type="range" id="ySliderPI" min="10" max="80" step="1" value="30" style="flex:1;min-width:120px;accent-color:var(--verde);"/>
+          <span id="pi-yk" style="font-family:JetBrains Mono,monospace;font-size:.82rem;font-weight:700;color:var(--verde);min-width:3.2rem;">3</span>
+        </div>
+        <p id="pi-readout" style="font-size:.82rem;margin-top:.45rem;color:#444;line-height:1.45;"></p>
+        <p style="font-size:.78rem;color:#888;margin-top:.35rem;">Función: <span class="katex-inline" data-tex="f(x)=0.5x^2+1"></span>. Cuente intersecciones con <span class="katex-inline" data-tex="y=k"></span> para la cantidad de preimágenes.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SECCIÓN 3 — INTERSECCIONES Y ASÍNTOTAS
+════════════════════════════════════════════════════ -->
+<div id="s3" class="section-panel">
+  <div class="card">
+    <h2><span class="num">3</span> Intersecciones con los Ejes y Asíntotas</h2>
+    <div class="grid-2">
+      <div>
+        <div class="def-box"><strong>Eje X — ceros/raíces</strong><br/>
+          Puntos (a, 0) con f(a) = 0. Pueden existir <strong>varios</strong>.</div>
+        <div class="def-box oro"><strong>Eje Y — ordenada al origen</strong><br/>
+          Punto (0, b) con b = f(0). Si existe, es <strong>único</strong>.</div>
+        <div class="def-box rojo"><strong>Asíntota vertical x = a</strong><br/>
+          a ∉ D<sub>f</sub> → extremo <strong>abierto</strong>.<br/>
+          f(x) → ±∞ cuando x → a.</div>
+        <div class="def-box" style="border-color:var(--oro);background:#fef8e8;">
+          <strong>Asíntota horizontal y = b</strong><br/>
+          f(x) → b cuando x → ±∞ → extremo <strong>abierto</strong> en el ámbito.</div>
+      </div>
+      <div>
+        <div class="chart-wrap"><canvas id="chartINT"></canvas></div>
+        <p style="font-size:.82rem;color:#777;margin-top:.4rem;">🔴 ceros en eje X · 🟡 intersección eje Y · <span style="color:#b41e1e;font-weight:600">línea roja punteada</span> = asíntota vertical <span class="katex-inline" data-tex="x=4"></span> · <span style="color:#c89b28;font-weight:600">dorado</span> = asíntota horizontal <span class="katex-inline" data-tex="y=1"></span> (extremos abiertos).</p>
+        <details class="deep" style="margin-top:.65rem;"><summary>📖 Lectura integrada (como en clase)</summary>
+          <p style="font-size:.82rem;margin:.35rem 0 0;">La rama principal es un tramo polinomial. A la derecha de la vertical roja aparece una <strong>rama racional</strong> que se acerca a <span class="katex-inline" data-tex="y=1"></span> sin tocarlo: eso condiciona el <strong>ámbito</strong> (el valor 1 queda como extremo abierto si la gráfica no lo alcanza). El número <span class="katex-inline" data-tex="4"></span> <strong>no pertenece</strong> al dominio de esa rama.</p>
+        </details>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SECCIÓN 4 — MONOTONÍA Y SIGNO
+════════════════════════════════════════════════════ -->
+<div id="s4" class="section-panel">
+  <div class="card">
+    <h2><span class="num">4</span> Monotonía y Signo de la Función</h2>
+    <div class="grid-2">
+      <div>
+        <div class="def-box verde"><strong>Creciente ↗</strong> — imágenes y preimágenes aumentan.</div>
+        <div class="def-box rojo"><strong>Decreciente ↘</strong> — imágenes disminuyen.</div>
+        <div class="def-box"><strong>Constante →</strong> — imagen la misma.</div>
+        <div class="def-box verde"><strong>f(x) &gt; 0</strong> — gráfica <strong>por encima</strong> del eje X.</div>
+        <div class="def-box rojo"><strong>f(x) &lt; 0</strong> — gráfica <strong>por debajo</strong> del eje X.</div>
+        <div class="def-box oro" style="margin-top:.5rem;">
+          ⚠️ <strong>Regla UCR:</strong> los intervalos de monotonía y signo<br/>
+          se expresan siempre con <strong>extremos abiertos</strong>.
+        </div>
+
+        <!-- Actividad arrastrar-soltar (4 categorías) -->
+        <p style="font-weight:700;font-size:.9rem;color:var(--azul);margin-top:1rem;">🎮 Clasifica intervalos (monotonía y signo)</p>
+        <p style="font-size:.83rem;margin-bottom:.5rem;">Cada etiqueta corresponde a <strong>una sola</strong> categoría. Vacía la piscina y verifica.</p>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem;min-height:2.2rem;" id="chips-pool">
+          <div class="drag-chip" draggable="true" data-val="creciente" ondragstart="drag(event)">(-1, 1) creciente</div>
+          <div class="drag-chip" draggable="true" data-val="decreciente" ondragstart="drag(event)">(1, 3) decreciente</div>
+          <div class="drag-chip" draggable="true" data-val="creciente" ondragstart="drag(event)">(3, 5) creciente</div>
+          <div class="drag-chip" draggable="true" data-val="negativo" ondragstart="drag(event)">(-1, 1) f &lt; 0</div>
+          <div class="drag-chip" draggable="true" data-val="positivo" ondragstart="drag(event)">(1, +∞) f &gt; 0</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.65rem;">
+          <div>
+            <p style="font-size:.78rem;font-weight:700;color:var(--verde);">↗ Creciente (monotonía)</p>
+            <div class="drag-zone" id="zone-creciente" data-accept="creciente"
+              ondragover="allowDrop(event)" ondrop="dropChip(event,'creciente')"
+              ondragenter="this.classList.add('over')" ondragleave="this.classList.remove('over')"></div>
+          </div>
+          <div>
+            <p style="font-size:.78rem;font-weight:700;color:var(--rojo);">↘ Decreciente</p>
+            <div class="drag-zone" id="zone-decreciente" data-accept="decreciente"
+              ondragover="allowDrop(event)" ondrop="dropChip(event,'decreciente')"
+              ondragenter="this.classList.add('over')" ondragleave="this.classList.remove('over')"></div>
+          </div>
+          <div>
+            <p style="font-size:.78rem;font-weight:700;color:var(--verde);">+ Signo f &gt; 0</p>
+            <div class="drag-zone" id="zone-positivo" data-accept="positivo"
+              ondragover="allowDrop(event)" ondrop="dropChip(event,'positivo')"
+              ondragenter="this.classList.add('over')" ondragleave="this.classList.remove('over')"></div>
+          </div>
+          <div>
+            <p style="font-size:.78rem;font-weight:700;color:var(--rojo);">− Signo f &lt; 0</p>
+            <div class="drag-zone" id="zone-negativo" data-accept="negativo"
+              ondragover="allowDrop(event)" ondrop="dropChip(event,'negativo')"
+              ondragenter="this.classList.add('over')" ondragleave="this.classList.remove('over')"></div>
+          </div>
+        </div>
+        <button class="btn verde" style="margin-top:.6rem;" onclick="checkDrag()">✔ Verificar las cuatro zonas</button>
+        <p id="drag-result" style="margin-top:.5rem;font-weight:700;font-size:.9rem;"></p>
+        <details class="deep" style="margin-top:.75rem;"><summary>💡 Pista (sin solución)</summary>
+          <p style="margin:.35rem 0 0;font-size:.82rem;">La monotonía mira si <strong>sube o baja</strong> al avanzar en X. El signo mira si la curva está <strong>encima o debajo</strong> del eje X. Un mismo intervalo de X puede ser, por ejemplo, creciente y positivo a la vez: aquí las <strong>categorías son distintas</strong> (etiquetas distintas).</p>
+        </details>
+      </div>
+      <div>
+        <div class="chart-wrap"><canvas id="chartMON"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SECCIÓN 5 — CONCAVIDAD
+════════════════════════════════════════════════════ -->
+<div id="s5" class="section-panel">
+  <div class="card">
+    <h2><span class="num">5</span> Concavidad y Punto de Inflexión</h2>
+    <div class="grid-2">
+      <div>
+        <div class="def-box">
+          <strong>Convexa ∪ (hacia arriba)</strong><br/>
+          El segmento entre dos puntos queda <strong>por encima</strong> de la curva.<br/>
+          <em>"La curva sonríe"</em>
+        </div>
+        <div class="def-box rojo">
+          <strong>Cóncava ∩ (hacia abajo)</strong><br/>
+          El segmento entre dos puntos queda <strong>por debajo</strong> de la curva.<br/>
+          <em>"La curva llora"</em>
+        </div>
+        <div class="def-box oro">
+          <strong>Punto de inflexión (a, b)</strong><br/>
+          Donde la gráfica <strong>cambia de concavidad</strong> y la función es
+          <strong>continua</strong>. Sus coordenadas se dan explícitamente.
+        </div>
+
+        <!-- Mini quiz concavidad -->
+        <div style="background:var(--gris-cl);border-radius:8px;padding:.9rem;margin-top:.8rem;">
+          <p style="font-weight:700;font-size:.9rem;">🧠 ¿Convexa o cóncava?</p>
+          <p style="font-size:.88rem;margin:.4rem 0;">Para f(x) = 0.2x³ − 0.5, en el intervalo (0, +∞), la función es:</p>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem;">
+            <button class="btn" onclick="checkConc(this,'convexa')">Convexa ∪</button>
+            <button class="btn" onclick="checkConc(this,'concava')">Cóncava ∩</button>
+          </div>
+          <p id="conc-msg" style="margin-top:.5rem;font-weight:700;font-size:.9rem;"></p>
+        </div>
+      </div>
+      <div>
+        <div class="chart-wrap"><canvas id="chartCONC"></canvas></div>
+        <p style="font-size:.82rem;color:#777;margin-top:.4rem;">🟡 Punto de inflexión en (0, −0.5)</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SECCIÓN 6 — QUIZ FINAL
+════════════════════════════════════════════════════ -->
+<div id="s6" class="section-panel">
+  <div class="card">
+    <h2><span class="num">6</span> Quiz Final — Análisis de Gráficas</h2>
+
+    <div class="quiz-q" id="q1">
+      <p>1. Los intervalos de <strong>monotonía</strong> en MA-0125 se expresan con extremos:</p>
+      <label><input type="radio" name="q1" value="a"/> Cerrados [a, b]</label>
+      <label><input type="radio" name="q1" value="b"/> Abiertos (a, b)</label>
+      <label><input type="radio" name="q1" value="c"/> Semicerrados [a, b)</label>
+      <label><input type="radio" name="q1" value="d"/> Depende de la función</label>
+    </div>
+
+    <div class="quiz-q" id="q2">
+      <p>2. El <strong>ámbito</strong> de una función se lee en:</p>
+      <label><input type="radio" name="q2" value="a"/> El eje X, de izquierda a derecha</label>
+      <label><input type="radio" name="q2" value="b"/> El eje Y, de abajo hacia arriba</label>
+      <label><input type="radio" name="q2" value="c"/> Ambos ejes simultáneamente</label>
+      <label><input type="radio" name="q2" value="d"/> La tabla de valores</label>
+    </div>
+
+    <div class="quiz-q" id="q3">
+      <p>3. Un punto <strong>mínimo relativo</strong> de f se presenta cuando:</p>
+      <label><input type="radio" name="q3" value="a"/> f(x) = 0</label>
+      <label><input type="radio" name="q3" value="b"/> La función cambia de decreciente a creciente</label>
+      <label><input type="radio" name="q3" value="c"/> La función cambia de concavidad</label>
+      <label><input type="radio" name="q3" value="d"/> x = 0</label>
+    </div>
+
+    <div class="quiz-q" id="q4">
+      <p>4. Si f(2) = 4, ¿cuánto vale <strong>2f(2) − 3</strong>?</p>
+      <label><input type="radio" name="q4" value="a"/> 8</label>
+      <label><input type="radio" name="q4" value="b"/> 5</label>
+      <label><input type="radio" name="q4" value="c"/> 11</label>
+      <label><input type="radio" name="q4" value="d"/> 3</label>
+    </div>
+
+    <div class="quiz-q" id="q5">
+      <p>5. Una <strong>asíntota vertical</strong> x = a implica que:</p>
+      <label><input type="radio" name="q5" value="a"/> a pertenece al dominio como extremo cerrado</label>
+      <label><input type="radio" name="q5" value="b"/> a no pertenece al dominio y los intervalos del dominio son abiertos en a</label>
+      <label><input type="radio" name="q5" value="c"/> f(a) = 0</label>
+      <label><input type="radio" name="q5" value="d"/> El ámbito incluye a</label>
+    </div>
+
+    <div class="quiz-q" id="q6">
+      <p>6. Las intersecciones con el <strong>eje X</strong> (ceros) se entregan como:</p>
+      <label><input type="radio" name="q6" value="a"/> Solo la abscisa a</label>
+      <label><input type="radio" name="q6" value="b"/> Par ordenado (a, 0)</label>
+      <label><input type="radio" name="q6" value="c"/> Un intervalo en el eje Y</label>
+      <label><input type="radio" name="q6" value="d"/> La expresión f(x) = 0 sin coordenadas</label>
+    </div>
+
+    <div class="quiz-q" id="q7">
+      <p>7. Si k &lt; 1, ¿cuántas preimágenes tiene k para <strong>f(x) = 0,5x² + 1</strong>?</p>
+      <label><input type="radio" name="q7" value="a"/> Dos</label>
+      <label><input type="radio" name="q7" value="b"/> Una</label>
+      <label><input type="radio" name="q7" value="c"/> Ninguna (la curva no alcanza esos valores de y)</label>
+      <label><input type="radio" name="q7" value="d"/> Infinitas</label>
+    </div>
+
+    <div class="quiz-q" id="q8">
+      <p>8. En MA-0125, la <strong>concavidad</strong> se describe con intervalos en:</p>
+      <label><input type="radio" name="q8" value="a"/> El eje Y</label>
+      <label><input type="radio" name="q8" value="b"/> El eje X (al recorrer la gráfica de izquierda a derecha)</label>
+      <label><input type="radio" name="q8" value="c"/> El plano completo, sin orden</label>
+      <label><input type="radio" name="q8" value="d"/> Solo en el punto de inflexión</label>
+    </div>
+
+    <div class="quiz-q" id="q9">
+      <p>9. Un intervalo donde f es <strong>creciente y positiva</strong> se obtiene como:</p>
+      <label><input type="radio" name="q9" value="a"/> La unión de dos intervalos cualquiera</label>
+      <label><input type="radio" name="q9" value="b"/> La intersección de los intervalos de monotonía y de signo (ambos leídos en X)</label>
+      <label><input type="radio" name="q9" value="c"/> Solo mirando el eje Y</label>
+      <label><input type="radio" name="q9" value="d"/> El intervalo más largo del dominio</label>
+    </div>
+
+    <div class="quiz-q" id="q10">
+      <p>10. El punto de <strong>inflexión</strong> se reporta como:</p>
+      <label><input type="radio" name="q10" value="a"/> Un intervalo abierto en X</label>
+      <label><input type="radio" name="q10" value="b"/> Par ordenado (a, b) donde cambia la concavidad y f es continua ahí</label>
+      <label><input type="radio" name="q10" value="c"/> Solo la pendiente en ese punto</label>
+      <label><input type="radio" name="q10" value="d"/> La asíntota más cercana</label>
+    </div>
+
+    <button class="btn" onclick="submitQuiz()">📊 Ver calificación</button>
+    <p id="quiz-score"></p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SECCIÓN 7 — RESUMEN
+════════════════════════════════════════════════════ -->
+<div id="s7" class="section-panel">
+  <div class="card">
+    <h2><span class="num">7</span> Resumen — Cómo leer cada concepto</h2>
+    <div style="overflow-x:auto;">
+      <table class="resumen">
+        <thead>
+          <tr>
+            <th>Concepto</th>
+            <th>Se lee en…</th>
+            <th>Dirección</th>
+            <th>Formato</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Dominio D<sub>f</sub></td><td>Eje X</td><td>Izq. → Der.</td><td>Intervalo</td></tr>
+          <tr><td>Ámbito A<sub>f</sub></td><td>Eje Y</td><td>Abajo → Arriba</td><td>Intervalo</td></tr>
+          <tr><td>Monotonía</td><td>Eje X</td><td>Izq. → Der.</td><td><span class="tag abierto">Abierto</span></td></tr>
+          <tr><td>Signo</td><td>Eje X (encima/abajo)</td><td>Izq. → Der.</td><td><span class="tag abierto">Abierto</span></td></tr>
+          <tr><td>Concavidad</td><td>Curvatura ∪ o ∩</td><td>Izq. → Der.</td><td><span class="tag abierto">Abierto</span></td></tr>
+          <tr><td>Int. eje X</td><td>Donde y = 0</td><td>—</td><td><span class="tag ordenado">Par ordenado</span></td></tr>
+          <tr><td>Int. eje Y</td><td>Donde x = 0</td><td>—</td><td><span class="tag ordenado">Par ordenado</span></td></tr>
+          <tr><td>Máx/mín relativo</td><td>Cambio de monotonía</td><td>—</td><td><span class="tag ordenado">Par ordenado</span></td></tr>
+          <tr><td>Máx/mín absoluto</td><td>Imagen max/min en D<sub>f</sub></td><td>—</td><td><span class="tag ordenado">Par ordenado</span></td></tr>
+          <tr><td>Punto de inflexión</td><td>Cambio de concavidad</td><td>—</td><td><span class="tag ordenado">Par ordenado</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="def-box oro" style="margin-top:1rem;">
+      ⭐ <strong>Regla de oro:</strong> signo, monotonía y concavidad → <strong>intervalos abiertos</strong>.
+      Intersecciones, extremos e inflexión → <strong>pares ordenados</strong>.
+    </div>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  MA-0125 Matemática Elemental · I Ciclo 2026 · Universidad de Costa Rica<br/>
+  Prof. Francisco Campos Sandí · Sede Sur
+</footer>
+
+<script>
+/* ── Navegación ──────────────────────────────── */
+const SECTIONS = ['s1','s2','s3','s4','s5','s6','s7'];
+function showSection(id, btn){
+  SECTIONS.forEach(s=>{
+    document.getElementById(s).classList.remove('active');
+  });
+  document.querySelectorAll('nav.sections button').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  const idx = SECTIONS.indexOf(id);
+  document.getElementById('progress-bar').style.width =
+    ((idx+1)/SECTIONS.length*100)+'%';
+  // Inicializar gráficas lazy
+  if(id==='s3' && !charts.INT) buildChartINT();
+  if(id==='s4' && !charts.MON) buildChartMON();
+  if(id==='s5' && !charts.CONC) buildChartCONC();
+}
+
+/* ── Colores UCR ─────────────────────────────── */
+const C = {
+  azul:'#003874', oro:'#c89b28', verde:'#00783c',
+  rojo:'#b41e1e', gris:'#a0a0a0'
+};
+
+/* ── Registro de charts ──────────────────────── */
+const charts = {};
+
+/* ── Generar puntos ──────────────────────────── */
+function range(a,b,step=0.15){
+  const arr=[]; for(let x=a;x<=b+1e-9;x+=step) arr.push(+x.toFixed(3));
+  return arr;
+}
+
+/* ══════════════════════════════════════════════
+   CHART 1 — Dominio y Ámbito  f(x)=0.25x²-1.5
+══════════════════════════════════════════════ */
+const xDA = range(-4.5,4.5,0.08);
+const fDA = x=>0.25*x*x-1.5;
+const ptsDA = xDA.map(x=>({x, y:+fDA(x).toFixed(4)}));
+
+charts.DA = new Chart(document.getElementById('chartDA'),{
+  type:'line',
+  data:{
+    datasets:[{
+      label:'f(x)=0.25x²-1.5',
+      data: ptsDA,
+      borderColor: C.azul,
+      borderWidth:2.5,
+      pointRadius:0,
+      tension:0.3,
+      fill:false
+    },{
+      label:'Extremo izq.',
+      data:[{x:-4.5,y:+fDA(-4.5).toFixed(2)}],
+      type:'scatter',
+      backgroundColor:C.azul, pointRadius:6
+    },{
+      label:'Extremo der.',
+      data:[{x:4.5,y:+fDA(4.5).toFixed(2)}],
+      type:'scatter',
+      backgroundColor:C.azul, pointRadius:6
+    },{
+      label:'Lectura en x',
+      data:[{x:0,y:-2.35},{x:0,y:4.35}],
+      type:'line',
+      borderColor:C.oro,
+      borderWidth:2,
+      borderDash:[6,4],
+      pointRadius:0,
+      fill:false
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    parsing:{xAxisKey:'x', yAxisKey:'y'},
+    scales:{
+      x:{type:'linear', title:{display:true,text:'x'}, min:-5.2, max:5.2, ticks:{maxTicksLimit:11}},
+      y:{type:'linear', title:{display:true,text:'f(x)'}, min:-2.35, max:4.35}
+    },
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        callbacks:{
+          label:ctx=>{
+            if(ctx.dataset.label==='Lectura en x') return '';
+            const px=ctx.parsed.x, py=ctx.parsed.y;
+            if(px!=null && py!=null) return `(${px.toFixed(2)}, ${py.toFixed(2)})`;
+            return ctx.formattedValue;
+          }
+        }
+      }
+    }
+  }
+});
+
+// Resultado de Dominio/Ámbito
+document.getElementById('da-result').textContent =
+  'Df = [–4.5, 4.5]  |  Af = [–1.5, 3.56]';
+
+/* ── Slider interactivo + guía en chartDA ───── */
+const slider = document.getElementById('xSlider');
+const sliderResult = document.getElementById('slider-result');
+function syncVerticalGuides(x){
+  if(charts.DA && charts.DA.data.datasets[3]){
+    charts.DA.data.datasets[3].data = [{x,y:-2.35},{x,y:4.35}];
+    charts.DA.update('none');
+  }
+  const pi = document.getElementById('xSliderPI');
+  if(pi && charts.PI){
+    pi.value = String(Math.max(-3.5, Math.min(3.5, x)));
+    updateChartPI();
+  }
+}
+slider.addEventListener('input',()=>{
+  const x = +slider.value;
+  const y = +(0.25*x*x-1.5).toFixed(2);
+  sliderResult.textContent = `f(${x}) = ${y}`;
+  syncVerticalGuides(x);
+});
+
+/* ══════════════════════════════════════════════
+   CHART 2 — Preimágenes  f(x)=0.5x²+1
+══════════════════════════════════════════════ */
+const fPI = x=>0.5*x*x+1;
+const xPI = range(-3.5,3.5,0.06);
+const ptsPI = xPI.map(x=>({x, y:+fPI(x).toFixed(4)}));
+
+function updateChartPI(){
+  if(!charts.PI) return;
+  const xv = parseFloat(document.getElementById('xSliderPI').value);
+  const yk = parseInt(document.getElementById('ySliderPI').value,10)/10;
+  const yv = fPI(xv);
+  document.getElementById('pi-xv').textContent = xv.toFixed(2);
+  document.getElementById('pi-yk').textContent = yk.toFixed(1);
+
+  const roots=[];
+  if(yk<0.999) {}
+  else if(yk<=1.02) roots.push(0);
+  else { const s=Math.sqrt(2*(yk-1)); roots.push(-s,s); }
+
+  const hit=[];
+  roots.forEach(rx=>{
+    if(rx>=-3.5 && rx<=3.5) hit.push({x:rx,y:yk});
+  });
+
+  charts.PI.data.datasets[1].data = [{x:xv,y:-0.45},{x:xv,y:8.2}];
+  charts.PI.data.datasets[2].data = [{x:-3.8,y:yk},{x:3.8,y:yk}];
+  charts.PI.data.datasets[3].data = [{x:xv,y:yv}];
+  charts.PI.data.datasets[4].data = hit;
+  charts.PI.update('none');
+
+  let msg = `<strong>Imagen:</strong> f(${xv.toFixed(2)}) = ${yv.toFixed(2)}. `;
+  if(yk<0.999) msg += `<strong>Preimágenes de y=${yk.toFixed(1)}:</strong> ninguna (mínimo de la parábola es y=1).`;
+  else if(yk<=1.02) msg += `<strong>Preimágenes de y=${yk.toFixed(1)}:</strong> una (x=0).`;
+  else msg += `<strong>Preimágenes de y=${yk.toFixed(1)}:</strong> dos puntos (simetría).`;
+  document.getElementById('pi-readout').innerHTML = msg;
+}
+
+charts.PI = new Chart(document.getElementById('chartPI'),{
+  type:'line',
+  data:{
+    datasets:[{
+      label:'f(x)=0.5x²+1',
+      data: ptsPI,
+      borderColor:C.azul, borderWidth:2.5,
+      pointRadius:0, tension:0.3, fill:false
+    },{
+      label:'vertical',
+      data:[{x:-3,y:-0.45},{x:-3,y:8.2}],
+      type:'line',
+      borderColor:C.oro, borderDash:[5,4], borderWidth:2, pointRadius:0, fill:false
+    },{
+      label:'horizontal',
+      data:[{x:-3.8,y:3},{x:3.8,y:3}],
+      type:'line',
+      borderColor:C.verde, borderDash:[5,4], borderWidth:2, pointRadius:0, fill:false
+    },{
+      label:'lectura',
+      data:[{x:-3,y:fPI(-3)}],
+      type:'scatter',
+      backgroundColor:C.oro, pointRadius:8
+    },{
+      label:'preimg',
+      data:[],
+      type:'scatter',
+      backgroundColor:C.verde, pointRadius:8, pointBorderColor:'#fff', pointBorderWidth:1
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    parsing:{xAxisKey:'x', yAxisKey:'y'},
+    scales:{
+      x:{type:'linear', title:{display:true,text:'x'}, min:-3.9, max:3.9},
+      y:{type:'linear', title:{display:true,text:'f(x)'}, min:-0.5, max:8.2}
+    },
+    plugins:{legend:{display:false}}
+  }
+});
+document.getElementById('xSliderPI').addEventListener('input', updateChartPI);
+document.getElementById('ySliderPI').addEventListener('input', updateChartPI);
+updateChartPI();
+syncVerticalGuides(+slider.value);
+
+/* ══════════════════════════════════════════════
+   CHART 3 — Intersecciones (lazy)
+══════════════════════════════════════════════ */
+function buildChartINT(){
+  const cub = x=>0.4*(x+3)*(x+1)*(x-1);
+  const ptsL=[];
+  for(let x=-3.8;x<=2.601;x+=0.07) ptsL.push({x, y:+cub(x).toFixed(4)});
+  const ptsR1=[];
+  for(let x=4.15;x<=6.55;x+=0.05) ptsR1.push({x, y:+(1+1.8/(x-4)).toFixed(4)});
+  const ptsR2=[];
+  for(let x=3.52;x<=3.78;x+=0.03) ptsR2.push({x, y:+(1+1.8/(x-4)).toFixed(4)});
+
+  charts.INT = new Chart(document.getElementById('chartINT'),{
+    type:'line',
+    data:{
+      datasets:[
+        {label:'rama principal', data:ptsL, borderColor:C.azul, borderWidth:2.6,
+         pointRadius:0, tension:0.15, fill:false},
+        {label:'rama derecha', data:ptsR1, borderColor:'rgba(0,56,116,0.55)', borderWidth:2.4,
+         pointRadius:0, tension:0.12, fill:false},
+        {label:'rama izq. asint.', data:ptsR2, borderColor:'rgba(0,56,116,0.55)', borderWidth:2.4,
+         pointRadius:0, tension:0.1, fill:false},
+        {label:'asíntota x=4', data:[{x:4,y:-3.6},{x:4,y:4.1}],
+         borderColor:'rgba(180,30,30,0.75)', borderDash:[6,4], borderWidth:2,
+         pointRadius:0, fill:false},
+        {label:'asíntota y=1', data:[{x:3.4,y:1},{x:7,y:1}],
+         borderColor:'rgba(200,155,40,0.85)', borderDash:[5,5], borderWidth:1.8,
+         pointRadius:0, fill:false},
+        {label:'ceros', data:[{x:-3,y:0},{x:-1,y:0},{x:1,y:0}],
+         type:'scatter', backgroundColor:C.rojo, pointRadius:7},
+        {label:'eje Y', data:[{x:0,y:-1.2}],
+         type:'scatter', backgroundColor:C.oro, pointRadius:8}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      parsing:{xAxisKey:'x', yAxisKey:'y'},
+      scales:{
+        x:{type:'linear', title:{display:true,text:'x'}, min:-4.2, max:7.2, ticks:{maxTicksLimit:12}},
+        y:{type:'linear', title:{display:true,text:'f(x)'}, min:-3.6, max:4.2}
+      },
+      plugins:{ legend:{display:false} }
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════
+   CHART 4 — Monotonía (lazy)
+══════════════════════════════════════════════ */
+function buildChartMON(){
+  const pts = [
+    {x:-3,y:1},{x:-1,y:1},
+    {x:-1,y:1},{x:0,y:1.5},{x:1,y:3},
+    {x:1,y:3},{x:2,y:2.25},{x:3,y:0},
+    {x:3,y:0},{x:4,y:0.75},{x:5,y:3}
+  ];
+  charts.MON = new Chart(document.getElementById('chartMON'),{
+    type:'line',
+    data:{
+      datasets:[
+        {label:'constante',
+         data:[{x:-3,y:1},{x:-1,y:1}],
+         borderColor:C.gris, borderWidth:3,
+         pointRadius:5, fill:false, tension:0},
+        {label:'creciente 1',
+         data:[{x:-1,y:1},{x:0,y:1.5},{x:1,y:3}],
+         borderColor:C.verde, borderWidth:3,
+         pointRadius:5, fill:false, tension:0.3},
+        {label:'decreciente',
+         data:[{x:1,y:3},{x:2,y:2.25},{x:3,y:0}],
+         borderColor:C.rojo, borderWidth:3,
+         pointRadius:5, fill:false, tension:0.3},
+        {label:'creciente 2',
+         data:[{x:3,y:0},{x:4,y:0.75},{x:5,y:3}],
+         borderColor:C.verde, borderWidth:3,
+         pointRadius:5, fill:false, tension:0.3}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        x:{type:'linear',title:{display:true,text:'x'},min:-4,max:6},
+        y:{title:{display:true,text:'f(x)'},min:-0.5,max:4}
+      },
+      plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════
+   CHART 5 — Concavidad (lazy)
+══════════════════════════════════════════════ */
+function buildChartCONC(){
+  const xC = range(-2.8,3.0);
+  const yC = xC.map(x=>+(0.2*x*x*x-0.5).toFixed(4));
+  charts.CONC = new Chart(document.getElementById('chartCONC'),{
+    type:'line',
+    data:{
+      labels:xC,
+      datasets:[{
+        label:'f(x)=0.2x³-0.5',
+        data:yC,
+        borderColor:C.azul, borderWidth:2.5,
+        pointRadius:0, tension:0.2, fill:false
+      },{
+        label:'Inflexión (0,−0.5)',
+        data:[{x:0,y:-0.5}],
+        type:'scatter',
+        backgroundColor:C.oro, pointRadius:8
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        x:{title:{display:true,text:'x'}},
+        y:{title:{display:true,text:'f(x)'},min:-2.5,max:2.8}
+      },
+      plugins:{legend:{display:false}}
+    }
+  });
+}
+
+/* ── Respuesta pregunta tipo examen ──────────── */
+function checkExam(btn, val){
+  // 3f(-2)+5 = 3(-1)+5 = 2
+  document.querySelectorAll('#s2 .btn').forEach(b=>{
+    b.style.background=''; b.style.color='';
+  });
+  if(val==='2'){
+    btn.style.background=C.verde; btn.style.color='white';
+    document.getElementById('exam-msg').style.color=C.verde;
+    document.getElementById('exam-msg').textContent='✔ ¡Correcto! 3(−1)+5 = −3+5 = 2';
+  } else {
+    btn.style.background=C.rojo; btn.style.color='white';
+    document.getElementById('exam-msg').style.color=C.rojo;
+    document.getElementById('exam-msg').textContent='✘ Incorrecto. 3(−1)+5 = −3+5 = 2';
+  }
+}
+
+/* ── Concavidad mini quiz ─────────────────────── */
+function checkConc(btn, val){
+  document.querySelectorAll('#s5 .btn').forEach(b=>{
+    b.style.background=''; b.style.color='';
+  });
+  if(val==='convexa'){
+    btn.style.background=C.verde; btn.style.color='white';
+    document.getElementById('conc-msg').style.color=C.verde;
+    document.getElementById('conc-msg').textContent='✔ ¡Correcto! En (0,+∞) la cúbica es convexa ∪.';
+  } else {
+    btn.style.background=C.rojo; btn.style.color='white';
+    document.getElementById('conc-msg').style.color=C.rojo;
+    document.getElementById('conc-msg').textContent='✘ En (0,+∞) es convexa ∪, no cóncava.';
+  }
+}
+
+/* ── Drag & drop ─────────────────────────────── */
+let draggedEl = null;
+function drag(e){ draggedEl = e.target; }
+function allowDrop(e){ e.preventDefault(); }
+function dropChip(e, zone){
+  e.preventDefault();
+  e.currentTarget.classList.remove('over');
+  if(draggedEl) e.currentTarget.appendChild(draggedEl);
+  draggedEl = null;
+}
+function zoneMatchCount(zoneId, val, n){
+  const z=document.getElementById(zoneId);
+  const chips=[...z.querySelectorAll('.drag-chip')];
+  if(chips.length!==n) return false;
+  return chips.every(ch=>ch.dataset.val===val);
+}
+function checkDrag(){
+  const pool=document.getElementById('chips-pool');
+  const poolEmpty=pool.querySelectorAll('.drag-chip').length===0;
+  const okC=zoneMatchCount('zone-creciente','creciente',2);
+  const okD=zoneMatchCount('zone-decreciente','decreciente',1);
+  const okP=zoneMatchCount('zone-positivo','positivo',1);
+  const okN=zoneMatchCount('zone-negativo','negativo',1);
+  const r=document.getElementById('drag-result');
+  if(poolEmpty && okC && okD && okP && okN){
+    r.style.color=C.verde;
+    r.textContent='✔ Correcto: monotonía (↗/↘) y signo (+/−) son lecturas distintas en X.';
+  } else {
+    r.style.color=C.rojo;
+    r.textContent='✘ Deben quedar 2 chips crecientes, 1 decreciente, 1 positivo y 1 negativo; la piscina vacía.';
+  }
+}
+
+/* ── Quiz final ──────────────────────────────── */
+const ANSWERS = {q1:'b',q2:'b',q3:'b',q4:'b',q5:'b',q6:'b',q7:'c',q8:'b',q9:'b',q10:'b'};
+const NQ = Object.keys(ANSWERS).length;
+function submitQuiz(){
+  let score=0;
+  Object.keys(ANSWERS).forEach(q=>{
+    const sel = document.querySelector(`input[name="${q}"]:checked`);
+    const labels = document.querySelectorAll(`#${q} label`);
+    labels.forEach(l=>{
+      l.classList.remove('correct','incorrect');
+      const inp = l.querySelector('input');
+      if(inp && inp.value===ANSWERS[q]) l.classList.add('correct');
+    });
+    if(sel){
+      if(sel.value===ANSWERS[q]) score++;
+      else sel.parentElement.classList.add('incorrect');
+    }
+  });
+  const el = document.getElementById('quiz-score');
+  try{ localStorage.setItem('ma0125s5_quiz', JSON.stringify({score, max:NQ, t:Date.now()})); }catch(e){}
+  el.style.color = score===NQ?C.verde:(score>=NQ*0.6?C.oro:C.rojo);
+  el.textContent = `Resultado: ${score}/${NQ} — ${
+    score===NQ?'¡Excelente! Dominas el tema 🎉':
+    score>=Math.ceil(NQ*0.6)?'Bien: repasa solo los ítems marcados en rojo.':
+    'Repasa las secciones anteriores y vuelve a intentarlo.'}`;
+}
+
+/* ── Barra progreso inicial ──────────────────── */
+document.getElementById('progress-bar').style.width='14%';
+
+/* ── KaTeX (fórmulas en data-tex) ───────────── */
+function renderKaTeX(){
+  if(typeof katex==='undefined') return;
+  document.querySelectorAll('.katex-inline[data-tex]').forEach(el=>{
+    const tex=el.getAttribute('data-tex');
+    if(!tex) return;
+    try{ katex.render(tex, el, {throwOnError:false, displayMode:false}); }
+    catch(e){ el.textContent=tex; }
+  });
+}
+window.addEventListener('load',()=>{ renderKaTeX(); });
+try{
+  const prev=JSON.parse(localStorage.getItem('ma0125s5_quiz')||'null');
+  if(prev && typeof prev.score==='number'){
+    document.getElementById('quiz-score').textContent=
+      `Último intento guardado en este navegador: ${prev.score}/${prev.max}.`;
+  }
+}catch(e){}
+</script>
+</body>
+</html>
